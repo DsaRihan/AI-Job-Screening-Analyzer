@@ -1,0 +1,53 @@
+# ORCHESTRATION: Docker Compose setup for backend (Flask), MongoDB, and Redis services in development
+version: '3.9'
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    ports:
+      - "5000:8000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+  frontend:
+    working_dir: /app/frontend
+    image: node:20-alpine
+    command: sh -c "npm ci && npx vite --host 0.0.0.0 --port 5173"
+    volumes:
+      - .:/app
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A backend.app.celery worker --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - backend
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

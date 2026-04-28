@@ -1,0 +1,118 @@
+import os
+import sys
+import pytest
+
+# Ensure environment is set
+os.environ.setdefault("DEV_BYPASS_AUTH", "1")
+os.environ.setdefault("APP_VERSION", "test-version")
+os.environ.setdefault("FIREBASE_CREDENTIAL_PATH", "backend/firebase-service-account.json")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_app_module():
+    """Load the Flask app module - lazy import happens here after conftest setup"""
+    import importlib.util
+    
+    # Load backend.app module
+    spec = importlib.util.find_spec("backend.app")
+    if spec is None:
+        import sys as sys_debug
+        raise ImportError(
+            f"Cannot find backend.app module.\n"
+            f"sys.path: {sys_debug.path}\n"
+            f"Current directory: {os.getcwd()}"
+        )
+    app_module = importlib.util.module_from_spec(spec)
+    sys.modules["backend.app"] = app_module
+    spec.loader.exec_module(app_module)
+    return app_module
+
+
+# This will be set by the setup_app_module fixture
+app = None
+
+def _load_app():
+    """Get the app from sys.modules after fixture loads it"""
+    return sys.modules.get("backend.app").app
+
+@pytest.fixture()
+def client(setup_app_module):
+    """Create a test client for the Flask app"""
+    app = _load_app()
+    app.config.update({
+        "TESTING": True
+    })
+    with app.test_client() as c:
+        yield c
+
+def test_health(client):
+    r = client.get('/health')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data['status'] == 'ok'
+    assert 'version' in data
+
+
+def test_version(client):
+    r = client.get('/version')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert 'version' in data
+
+
+def test_sys_info(client):
+    r = client.get('/internal/sys-info')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert 'platform' in data
+    assert 'python_version' in data
+    assert 'cpu_count' in data
+
+
+def test_process_info(client):
+    r = client.get('/internal/process-info')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert 'pid' in data
+    assert 'thread_count' in data
+
+
+def test_network_info(client):
+    r = client.get('/internal/network-info')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert 'hostname' in data
+    assert 'ip_address' in data
+
+
+def test_thread_info(client):
+    r = client.get('/internal/thread-info')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert 'total_threads' in data
+    assert 'active_threads' in data
+    assert isinstance(data['active_threads'], list)
+
+
+def test_gc_info(client):
+    r = client.get('/internal/gc-info')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert 'gc_enabled' in data
+    assert 'gc_counts' in data
+    assert 'gc_threshold' in data
+
+
+def test_time_info(client):
+    r = client.get('/internal/time-info')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert 'current_time' in data
+    assert 'utc_time' in data
+    assert 'timezone' in data
+
+
+
+
+
+
