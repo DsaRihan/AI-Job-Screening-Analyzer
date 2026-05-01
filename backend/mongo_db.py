@@ -44,7 +44,14 @@ def get_db():
         return None, False
     try:
         from pymongo import MongoClient
-        _client = MongoClient(mongo_uri, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=5000)
+        # Enable TLS only when the URI indicates a secure/Atlas connection.
+        # Local docker mongo instances typically do not use TLS, and passing
+        # a tlsCAFile causes an SSL handshake attempt that fails.
+        client_kwargs = {"serverSelectionTimeoutMS": 5000}
+        uri_lower = mongo_uri.lower()
+        if uri_lower.startswith("mongodb+srv://") or "tls=true" in uri_lower or "ssl=true" in uri_lower:
+            client_kwargs["tlsCAFile"] = certifi.where()
+        _client = MongoClient(mongo_uri, **client_kwargs)
         _client.admin.command("ping")  # verify connection
         _db = _client["resumeAnalyzer"]
         analysis_collection = _db["analysis_results"]

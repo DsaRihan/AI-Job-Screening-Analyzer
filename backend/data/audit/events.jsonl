@@ -14,3 +14,4 @@
 {"ts": "2026-04-29T13:07:50.728995Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 0.84, "notifyEmail": null}}
 {"ts": "2026-04-29T16:28:41.260592Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 0.0, "notifyEmail": null}}
 {"ts": "2026-04-30T12:53:26.215708Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "bECpOSKWafZJQ4yJOLMLbKgHndX2", "matchPercentage": 7.16, "notifyEmail": null}}
+{"ts": "2026-05-01T10:29:28.904276Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "Kg64SSZvDbToNIGh9J8vb5YIhcE2", "matchPercentage": 2.59, "notifyEmail": null}}

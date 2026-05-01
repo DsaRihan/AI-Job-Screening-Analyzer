@@ -28,13 +28,14 @@ A full-stack AI-powered career platform with **17 distinct AI features**, built 
 7. [AI / ML Capabilities](#7-ai--ml-capabilities)
 8. [Environment Variables](#8-environment-variables)
 9. [Quick Start](#9-quick-start)
-10. [Testing](#10-testing)
-11. [Deployment](#11-deployment)
-12. [Database & Persistence](#12-database--persistence)
-13. [Security](#13-security)
-14. [Roadmap](#14-roadmap)
-15. [Contributing](#15-contributing)
-16. [License](#16-license)
+10. [Developer Guides](#developer--operations-guides)
+11. [Testing](#11-testing)
+12. [Deployment](#12-deployment)
+13. [Database & Persistence](#13-database--persistence)
+14. [Security](#14-security)
+15. [Roadmap](#15-roadmap)
+16. [Contributing](#16-contributing)
+17. [License](#17-license)
 
 ---
 
@@ -295,12 +296,15 @@ Upload Resume → Save Version → View Progress Chart → Study Pack
 
 ## 9. Quick Start
 
+### Local Development (Recommended)
+See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed setup instructions (local backend/frontend, environment variables, common issues).
+
 ### Backend (Local)
 ```bash
 python -m venv .venv
-.venv/Scripts/activate        # Windows
+.venv/bin/activate                # or .venv\Scripts\activate on Windows
 pip install -r backend/requirements.txt
-cp .env.example .env          # Edit with your API keys
+cp backend/.env.example backend/.env
 python run.py
 ```
 
@@ -313,9 +317,13 @@ npm run dev
 
 ### Docker Compose (Full Stack)
 ```bash
-docker compose up --build
+# Create root .env with Firebase keys and MONGO_URI (Atlas or local)
+docker compose up -d --build
 ```
-This starts: Backend (port 5000), Frontend (port 5173), Redis (port 6379), Celery Worker.
+
+Stack includes: Backend (port 5000), Frontend (port 8080), Redis (6379), Celery Worker, MongoDB.
+
+See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for endpoint reference and Atlas connectivity testing.
 
 ### Sample cURL (Job Seeker Mode)
 ```bash
@@ -328,7 +336,18 @@ curl -X POST http://localhost:5000/analyze \
 
 ---
 
-## 10. Testing
+## Developer & Operations Guides
+
+**New to this project?** Start here:
+
+- [DEVELOPMENT.md](DEVELOPMENT.md) — Local setup, environment variables, Docker stack, common issues and troubleshooting
+- [API_DOCUMENTATION.md](API_DOCUMENTATION.md) — Complete API reference, authentication, endpoints, Mongo/Firebase configuration, and testing Atlas connectivity
+- [KNOWN_ISSUES.md](KNOWN_ISSUES.md) — Phase 1 issues and mitigations (Firebase config, Mongo SSL, Docker caching, etc.)
+- [PHASE2_READINESS.md](PHASE2_READINESS.md) — Phase 2 checklist, acceptance criteria, and next priorities
+
+---
+
+## 11. Testing
 
 ```bash
 # Run all tests (56 tests)
