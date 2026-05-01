@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     environment:
       PORT: 8000
-      DEV_BYPASS_AUTH: "1"
+      DEV_BYPASS_AUTH: "0"
       ASYNC_TASKS_ENABLED: "1"
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
@@ -46,7 +46,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: http://localhost:5000
-        VITE_DEV_BYPASS: "1"
+        VITE_DEV_BYPASS: "0"
     ports:
       - "8080:80"
     depends_on:
