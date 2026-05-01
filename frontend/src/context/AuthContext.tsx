@@ -57,6 +57,10 @@ function getCanonicalRedirectUrl() {
   try {
     const target = new URL(CANONICAL_APP_URL)
     const current = window.location
+    const isLocalHost = current.hostname === 'localhost' || current.hostname === '127.0.0.1' || current.hostname.endsWith('.local')
+    if (isLocalHost) {
+      return null
+    }
     if (current.hostname !== target.hostname) {
       return `${target.origin}${current.pathname}${current.search}${current.hash}`
     }
