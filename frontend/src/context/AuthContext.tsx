@@ -121,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const idToken = await u.getIdToken()
       let role: UserRole | null = null
+      const pendingRole = window.sessionStorage.getItem('pendingUserRole')
       try {
         const profile = await getAuthMe(idToken)
         role = (profile.role as UserRole | null) || null
@@ -128,11 +129,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role = null
       }
 
-      if (!role) {
-        const pendingRole = window.sessionStorage.getItem('pendingUserRole')
-        if (pendingRole === 'candidate' || pendingRole === 'recruiter') {
-          role = pendingRole
-        }
+      if (pendingRole === 'candidate' || pendingRole === 'recruiter') {
+        role = pendingRole
       }
 
           if (role) {
