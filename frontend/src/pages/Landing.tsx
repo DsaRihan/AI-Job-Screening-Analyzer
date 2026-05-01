@@ -1,6 +1,7 @@
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import LoaderOverlay from '../components/LoaderOverlay'
 
 const featureCards = [
   {
@@ -25,6 +26,53 @@ export default function Landing() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errorSeq, setErrorSeq] = useState(0)
+
+  const formatAuthError = (err: any, fallback: string) => {
+    const raw = typeof err === 'string' ? err : (err?.message || err?.error || err?.toString?.() || '')
+    const trimmed = raw.trim()
+
+    if (!trimmed) return fallback
+
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        const parsedMessage = parsed?.message || parsed?.error || parsed?.detail || parsed?.details
+        if (typeof parsedMessage === 'string' && parsedMessage.trim()) return parsedMessage.trim()
+      } catch {
+        // Ignore JSON parse failures and fall back to the raw text below.
+      }
+    }
+
+    const friendlyMap: Record<string, string> = {
+      'auth/invalid-credential': 'The email or password you entered is incorrect.',
+      'auth/wrong-password': 'The password you entered is incorrect.',
+      'auth/user-not-found': 'No account was found for that email address.',
+      'auth/popup-closed-by-user': 'Sign-in was canceled before completion.',
+      'auth/cancelled-popup-request': 'Another sign-in popup is already open.',
+      'auth/unauthorized-domain': 'This domain is not authorized for Google sign-in.',
+      'auth/network-request-failed': 'Network error. Please check your connection and try again.'
+    }
+
+    for (const [key, message] of Object.entries(friendlyMap)) {
+      if (trimmed.includes(key)) return message
+    }
+
+    return trimmed.replace(/^Firebase:\s*/i, '').replace(/^Error:\s*/i, '') || fallback
+  }
+
+  const showAuthError = (err: any, fallback: string) => {
+    const message = formatAuthError(err, fallback)
+    setError(message)
+    setErrorSeq((value) => value + 1)
+    window.alert(message)
+  }
+
+  useEffect(() => {
+    if (!error) return
+    const timer = window.setTimeout(() => setError(null), 4500)
+    return () => window.clearTimeout(timer)
+  }, [error, errorSeq])
 
   useEffect(() => {
     if (user) {
@@ -38,7 +86,7 @@ export default function Landing() {
     try {
       await signIn()
     } catch (err: any) {
-      setError(err?.code ? `${err.code}: ${err.message || 'Google sign-in failed'}` : (err?.message || 'Google sign-in failed'))
+      showAuthError(err, 'Google sign-in failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -50,7 +98,7 @@ export default function Landing() {
     try {
       await signInWithEmail(email, password)
     } catch (err: any) {
-      setError(err?.code ? `${err.code}: ${err.message || 'Email sign-in failed'}` : (err?.message || 'Email sign-in failed'))
+      showAuthError(err, 'Email sign-in failed. Please check your credentials and try again.')
     } finally {
       setLoading(false)
     }
@@ -59,6 +107,7 @@ export default function Landing() {
   return (
     <div className="landing-shell">
       <div className="landing-atmosphere" aria-hidden="true" />
+      <LoaderOverlay show={loading} message={mode === 'google' ? 'Signing you in…' : 'Verifying credentials…'} />
       <section className="landing-hero">
         <h1>AI Job Screening & Coaching Platform</h1>
         <p className="landing-tagline">Analyze Your Resume With AI</p>
@@ -74,9 +123,11 @@ export default function Landing() {
           </div>
 
           {mode === 'google' && (
-            <button className="btn landing-cta" onClick={handleSignIn} disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign in with Google'}
-            </button>
+            <div className="landing-auth-action">
+              <button className="btn landing-cta" onClick={handleSignIn} disabled={loading}>
+                {loading ? 'Signing in...' : 'Sign in with Google'}
+              </button>
+            </div>
           )}
 
           {mode === 'email' && (

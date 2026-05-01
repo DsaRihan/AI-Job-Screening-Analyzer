@@ -383,6 +383,17 @@ pre {
   background: linear-gradient(90deg, #0284c7 0%, #0f766e 100%);
 }
 
+.landing-auth-action {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.landing-auth-action .landing-cta {
+  min-width: 220px;
+  margin-top: 0;
+}
+
 .landing-auth-card {
   margin: 30px auto 0;
   max-width: 520px;
@@ -520,8 +531,13 @@ pre {
 
 .landing-auth-error {
   margin: 12px 0 0;
-  color: #f87171;
-  font-size: 0.9rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fecaca;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
 .landing-features {
