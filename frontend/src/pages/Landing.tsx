@@ -87,7 +87,6 @@ export default function Landing() {
       await signIn()
     } catch (err: any) {
       showAuthError(err, 'Google sign-in failed. Please try again.')
-    } finally {
       setLoading(false)
     }
   }
@@ -99,7 +98,6 @@ export default function Landing() {
       await signInWithEmail(email, password)
     } catch (err: any) {
       showAuthError(err, 'Email sign-in failed. Please check your credentials and try again.')
-    } finally {
       setLoading(false)
     }
   }
