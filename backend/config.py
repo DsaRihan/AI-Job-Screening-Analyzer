@@ -13,7 +13,7 @@ def _load_environment_files() -> None:
     backend_dir = Path(__file__).resolve().parent
     env_path = backend_dir / ".env"
     if env_path.exists():
-        load_dotenv(env_path, override=True)
+        load_dotenv(env_path, override=False)
 
 
 _load_environment_files()

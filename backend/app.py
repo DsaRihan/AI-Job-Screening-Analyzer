@@ -808,8 +808,8 @@ def call_llm(prompt, temperature=0.6):
     return result
 
 def verify_firebase_token(id_token):
-    # Check for dev token strictly first
-    if DEV_BYPASS_AUTH and id_token == "dev":
+    # Check for dev token strictly first (read dynamically to respect test-time env changes)
+    if config.DEV_BYPASS_AUTH and id_token == "dev":
         logger.warning("auth.dev_bypass_active user=dev-user")
         return {"uid": "dev-user", "email": "dev@example.com", "devBypass": True}
 

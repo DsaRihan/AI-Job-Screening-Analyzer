@@ -454,14 +454,5 @@ npm run build
 
 ---
 
-## 16. License
 
-MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-<div align="center">
-  <b>Built by Deepak Bajaj</b><br>
-  <i>8th Semester Major Project — AI-Powered Career Intelligence Platform</i>
-</div>
 
