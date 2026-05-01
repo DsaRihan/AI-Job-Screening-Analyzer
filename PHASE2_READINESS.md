@@ -8,6 +8,8 @@ This checklist captures the recommended tasks to prepare the project for Phase 2
 - [ ] Move all production credentials out of local files into provider-managed secrets (GitHub Secrets / Docker secrets / Vault).
 - [ ] Add integration tests for upload → analysis → storage (end-to-end smoke tests).
 - [ ] Harden auth: verify Firebase client config in frontend and server-side token verification in backend.
+- [ ] Add account management flows for user dashboard profile updates, password changes, and role upgrades.
+- [ ] Add resume-based automation to recommend suitable jobs/roles from analysis results.
 
 ## Priority (Medium)
 
@@ -15,6 +17,9 @@ This checklist captures the recommended tasks to prepare the project for Phase 2
 - [ ] Add backup/export strategy for Mongo (periodic dumps or managed backups if Atlas used).
 - [ ] Add Docker image scanning (Snyk/Trivy) in CI and a pre-push secret scan.
 - [ ] Fix markdown lint warnings and CI docs checklist.
+- [ ] Expand the user dashboard with profile settings, saved analyses, recommendations, and resume history.
+- [ ] Add role switch UX so a job seeker can upgrade to recruiter with the correct permissions and navigation.
+- [ ] Add automated job recommendations based on resume skills, experience, and analysis score.
 
 ## Priority (Low)
 
@@ -26,3 +31,6 @@ This checklist captures the recommended tasks to prepare the project for Phase 2
 - All high priority items completed or scheduled with owners.
 - CI pipeline runs on PRs and passes lint, tests, and image scans.
 - A reproducible staging environment can be spun up with `docker compose up --build` using documented `.env.example` (no secrets included).
+- The user dashboard supports account settings, password updates, and role changes.
+- Resume analysis produces job/role recommendations automatically.
+- Recruiter upgrades and role-based navigation are verified end to end.
