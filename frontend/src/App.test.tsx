@@ -44,9 +44,8 @@ describe('App', () => {
       </BrowserRouter>
     )
 
-    expect(screen.getByRole('link', { name: /AI Job Screening/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Job Seeker/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Recruiter/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Sign out/i })).toBeInTheDocument()
+    // Role selection screen is shown after adding Role-Based Access
+    expect(screen.getByText(/Choose Your Path/i)).toBeInTheDocument()
+    expect(screen.getByText(/I\u2019m a Job Seeker/i)).toBeInTheDocument()
   })
 })

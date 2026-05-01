@@ -90,6 +90,9 @@ jobs:
 
   backend-python:
     runs-on: ubuntu-latest
+    env:
+      DEV_BYPASS_AUTH: '1'
+      COHERE_API_KEY: 'dummy-key-for-testing'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -114,7 +117,6 @@ jobs:
           head -20 tests/test_health_and_version.py || echo "NOT FOUND"
       - name: Run tests
         env:
-          DEV_BYPASS_AUTH: '1'
           PYTHONPATH: ${{ github.workspace }}
         run: |
           . venv/bin/activate
