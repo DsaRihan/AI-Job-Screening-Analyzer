@@ -1,5 +1,6 @@
 import sys
 import os
+from unittest.mock import MagicMock
 
 print("\n" + "=" * 70)
 print("TESTS/CONFTEST.PY EXECUTING")
@@ -40,7 +41,35 @@ print(f"Changed to cwd: {os.getcwd()}")
 # Set environment variables BEFORE anything imports the app
 os.environ["DEV_BYPASS_AUTH"] = "1"
 os.environ["FIREBASE_CREDENTIAL_PATH"] = "backend/firebase-service-account.json"
-print("Environment variables set")
+
+# Mock optional dependencies that tests don't need
+sys.modules['celery'] = MagicMock()
+sys.modules['firebase_admin'] = MagicMock()
+sys.modules['firebase_admin.auth'] = MagicMock()
+sys.modules['firebase_admin.credentials'] = MagicMock()
+sys.modules['firebase_admin.firestore'] = MagicMock()
+sys.modules['redis'] = MagicMock()
+sys.modules['rq'] = MagicMock()
+sys.modules['rq.job'] = MagicMock()
+sys.modules['cohere'] = MagicMock()
+sys.modules['openai'] = MagicMock()
+sys.modules['spacy'] = MagicMock()
+sys.modules['tensorflow'] = MagicMock()
+
+# Fix sklearn mocking - need to create nested structure
+sklearn_mock = MagicMock()
+sklearn_mock.metrics = MagicMock()
+sklearn_mock.metrics.pairwise = MagicMock()
+sklearn_mock.metrics.pairwise.cosine_similarity = MagicMock(return_value=0.5)
+sklearn_mock.feature_extraction = MagicMock()
+sklearn_mock.feature_extraction.text = MagicMock()
+sklearn_mock.feature_extraction.text.TfidfVectorizer = MagicMock()
+sys.modules['sklearn'] = sklearn_mock
+sys.modules['sklearn.metrics'] = sklearn_mock.metrics
+sys.modules['sklearn.metrics.pairwise'] = sklearn_mock.metrics.pairwise
+sys.modules['sklearn.feature_extraction'] = sklearn_mock.feature_extraction
+sys.modules['sklearn.feature_extraction.text'] = sklearn_mock.feature_extraction.text
+print("Environment variables and mock modules set")
 
 print("=" * 70)
 print("TESTS/CONFTEST.PY SETUP COMPLETE")

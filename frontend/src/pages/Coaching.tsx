@@ -1,11 +1,13 @@
 // COACHING DASHBOARD: Version tracking with progress metrics, skill gap analysis, study pack resources with filtering, interview questions, version comparison
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { coachingProgress, coachingStudyPack, coachingInterviewQuestions, coachingDiff, coachingSaveVersion, downloadCoachingReportPdf } from '../api/client'
 import MetricsChart from '../components/MetricsChart'
+import LoaderOverlay from '../components/LoaderOverlay'
 
 export default function Coaching() {
   const { token, user } = useAuth()
+  const fetchedForTokenRef = useRef<string | null>(null)
   const [progress, setProgress] = useState<any>(null)
   const [study, setStudy] = useState<any>(null)
   const [pendingSearch, setPendingSearch] = useState('')
@@ -16,7 +18,9 @@ export default function Coaching() {
   const [role, setRole] = useState('Software Engineer')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [busyMessage, setBusyMessage] = useState('')
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [downloadingMessage, setDownloadingMessage] = useState('')
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [jdText, setJdText] = useState<string>('')
   const [diffData, setDiffData] = useState<any>(null)
@@ -24,18 +28,22 @@ export default function Coaching() {
   const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!token) return
+    if (!token) {
+      fetchedForTokenRef.current = null
+      return
+    }
+    if (fetchedForTokenRef.current === token) return
+    fetchedForTokenRef.current = token
+
     setError(null)
     ;(async () => {
       try {
-        const p = await coachingProgress(token)
+        const [p, s] = await Promise.all([
+          coachingProgress(token),
+          coachingStudyPack(token).catch(() => null),
+        ])
         setProgress(p)
-        try {
-          const s = await coachingStudyPack(token)
-          setStudy(s)
-        } catch {
-          setStudy(null)
-        }
+        setStudy(s)
       } catch (e: any) { setError(e?.message || 'Failed to load coaching') }
     })()
   }, [token])
@@ -73,12 +81,16 @@ export default function Coaching() {
 
   const loadQuestions = async () => {
     if (!token) return
+    setBusyMessage('Generating interview questions…')
     setLoading(true); setError(null)
     try {
       const res = await coachingInterviewQuestions(token, role)
       setQuestions(res?.questions || [])
     } catch (e: any) { setError(e?.message || 'Failed to load questions') }
-    finally { setLoading(false) }
+    finally {
+      setLoading(false)
+      setBusyMessage('')
+    }
   }
 
   const saveVersion = async (e: React.FormEvent) => {
@@ -93,6 +105,7 @@ export default function Coaching() {
       setSaveError('Select a resume PDF before saving.')
       return
     }
+    setBusyMessage('Uploading resume and saving coaching version…')
     setLoading(true); setError(null)
     try {
       const saved = await coachingSaveVersion(token, { resume: resumeFile, jobDescription: jdText })
@@ -101,21 +114,31 @@ export default function Coaching() {
       const versionNumber = saved?.saved?.version
       setSaveNotice(versionNumber ? `Version v${versionNumber} saved successfully.` : 'Version saved successfully.')
     } catch (err: any) { setError(err?.message || 'Save version failed') }
-    finally { setLoading(false) }
+    finally {
+      setLoading(false)
+      setBusyMessage('')
+    }
   }
 
   const computeDiff = async () => {
     if (!token || !progress?.versions || progress.versions.length < 2) { setError('Need at least 2 versions'); return }
     const prev = progress.versions.length - 1
     const curr = progress.versions.length
+    setBusyMessage('Computing differences between versions…')
+    setLoading(true)
     try {
       const d = await coachingDiff(token, prev, curr)
       setDiffData(d)
     } catch (e: any) { setError(e?.message || 'Diff failed') }
+    finally {
+      setLoading(false)
+      setBusyMessage('')
+    }
   }
 
   const handleDownloadProgressPdf = async () => {
     if (!progress) return
+    setDownloadingMessage('Generating progress PDF report…')
     setDownloadingPdf(true)
     try {
       await downloadCoachingReportPdf(token, progress, 'progress')
@@ -123,11 +146,13 @@ export default function Coaching() {
       setError(err?.message || 'Failed to download PDF')
     } finally {
       setDownloadingPdf(false)
+      setDownloadingMessage('')
     }
   }
 
   const handleDownloadStudyPackPdf = async () => {
     if (!study) return
+    setDownloadingMessage('Generating study pack PDF report…')
     setDownloadingPdf(true)
     try {
       await downloadCoachingReportPdf(token, study, 'study_pack')
@@ -135,11 +160,16 @@ export default function Coaching() {
       setError(err?.message || 'Failed to download PDF')
     } finally {
       setDownloadingPdf(false)
+      setDownloadingMessage('')
     }
   }
 
   return (
     <section>
+      <LoaderOverlay
+        show={loading || downloadingPdf}
+        message={downloadingPdf ? (downloadingMessage || 'Generating coaching PDF report…') : (busyMessage || 'Uploading PDF and generating AI response…')}
+      />
       <h2>Coaching Dashboard</h2>
       {!user && <div className="error">Sign in to use coaching features.</div>}
 
@@ -147,8 +177,8 @@ export default function Coaching() {
         <h3>Save New Version</h3>
         <p className="coaching-help-text">Upload your resume and a job description to generate a personalized study pack with skill gaps and learning resources.</p>
         <form onSubmit={saveVersion}>
-          <label>Resume (PDF)
-            <input type="file" accept="application/pdf" onChange={e => setResumeFile(e.target.files?.[0] || null)} />
+          <label>Resume (PDF or DOCX)
+            <input type="file" accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.docx" onChange={e => setResumeFile(e.target.files?.[0] || null)} />
           </label>
           <label>Job Description (paste JD with skills like Python, React, Docker, AWS)
             <textarea rows={4} value={jdText} onChange={e => setJdText(e.target.value)} placeholder="Paste job description here. Include skills and requirements." />

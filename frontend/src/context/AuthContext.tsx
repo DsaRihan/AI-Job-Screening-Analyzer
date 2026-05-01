@@ -12,10 +12,12 @@ import {
   signInWithPopup,
   signOut as fbSignOut
 } from 'firebase/auth'
-import { postLoginWelcome } from '../api/client'
+import { getAuthMe, postLoginWelcome } from '../api/client'
+
+type UserRole = 'user' | 'candidate' | 'recruiter' | 'admin'
 
 type Ctx = {
-  user: { uid: string; email?: string | null; phoneNumber?: string | null } | null
+  user: { uid: string; email?: string | null; phoneNumber?: string | null; role?: UserRole | null } | null
   token: string | null
   authMessage: string | null
   signIn: () => Promise<void>
@@ -96,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Dev bypass takes priority
     if (import.meta.env.VITE_DEV_BYPASS === '1') {
-      setUser({ uid: 'dev-user', email: 'dev@example.com' })
+      setUser({ uid: 'dev-user', email: 'dev@example.com', role: 'admin' })
       setToken('dev')
       return
     }
@@ -114,7 +116,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const idToken = await u.getIdToken()
-      setUser({ uid: u.uid, email: u.email, phoneNumber: u.phoneNumber })
+      let role: UserRole | null = null
+      try {
+        const profile = await getAuthMe(idToken)
+        role = (profile.role as UserRole | null) || null
+      } catch {
+        role = null
+      }
+
+      if (!role) {
+        const pendingRole = window.sessionStorage.getItem('pendingUserRole')
+        if (pendingRole === 'candidate' || pendingRole === 'recruiter') {
+          role = pendingRole
+        }
+      }
+
+          if (role) {
+            window.sessionStorage.removeItem('pendingUserRole')
+          }
+
+      setUser({ uid: u.uid, email: u.email, phoneNumber: u.phoneNumber, role })
       setToken(idToken)
 
       if (welcomedUidRef.current !== u.uid) {
@@ -162,7 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authMessage,
     signIn: async () => {
       if (import.meta.env.VITE_DEV_BYPASS === '1') {
-        setUser({ uid: 'dev-user', email: 'dev@example.com' })
+        setUser({ uid: 'dev-user', email: 'dev@example.com', role: 'admin' })
         setToken('dev')
         console.log('Dev bypass: auto signed in')
         return

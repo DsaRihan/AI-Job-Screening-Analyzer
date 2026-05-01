@@ -240,6 +240,27 @@ export async function postLoginWelcome(
   return res.json() as Promise<{ ok: boolean, welcomeEmailSent: boolean, reason?: string }>
 }
 
+export async function getAuthMe(token: string) {
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  if (!res.ok) throw new Error(`Auth profile failed: ${res.status}`)
+  return res.json() as Promise<{ uid: string, email?: string | null, role: string | null }>
+}
+
+export async function selectAuthRole(token: string, role: 'candidate' | 'recruiter') {
+  const res = await fetch(`${API_BASE}/auth/select-role`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ role })
+  })
+  if (!res.ok) throw new Error(`Role selection failed: ${res.status}`)
+  return res.json() as Promise<{ ok: boolean, role: 'candidate' | 'recruiter' }>
+}
+
 // Auth-protected coaching APIs (token required; dev mode may accept dummy token)
 export async function coachingSaveVersion(token: string, payload: { resume: File, jobDescription?: File | string }) {
   const form = new FormData()

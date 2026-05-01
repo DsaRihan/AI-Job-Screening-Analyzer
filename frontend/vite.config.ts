@@ -8,6 +8,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      '/auth': { target: process.env.VITE_API_BASE_URL || 'http://backend:8000', changeOrigin: true },
       '/health': { target: process.env.VITE_API_BASE_URL || 'http://backend:8000', changeOrigin: true },
       '/version': { target: process.env.VITE_API_BASE_URL || 'http://backend:8000', changeOrigin: true },
       '/metrics': { target: process.env.VITE_API_BASE_URL || 'http://backend:8000', changeOrigin: true },

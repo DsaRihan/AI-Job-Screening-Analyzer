@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { getHistory } from '../api/client'
 
 interface HistoryEntry {
+  _id?: string
   mode: string
   createdAt: string
   result?: {
@@ -14,7 +15,27 @@ interface HistoryEntry {
     lexicalMatchPercentage?: number
     semanticMatchPercentage?: number
     combinedMatchPercentage?: number
+    [key: string]: any
   }
+}
+
+const MODE_LABELS: Record<string, string> = {
+  recruiter: '👔 Recruiter Analysis',
+  jobSeeker: '🎯 Job Seeker Analysis',
+  cover_letter: '📝 Cover Letter',
+  interview_questions: '❓ Interview Questions',
+  skill_gap: '🧩 Skill Gap Analysis',
+  linkedin_profile: '💼 LinkedIn Profile',
+  salary_estimation: '💰 Salary Estimation',
+  tailor_resume: '✍️ Tailored Resume',
+  career_path: '🧭 Career Path',
+  resume_health: '🩺 Resume Health Check',
+  networking_message: '🤝 Networking Message',
+  mock_interview: '🎤 Mock Interview',
+  mock_interview_analysis: '📊 Interview Analysis',
+  boolean_search: '🔎 Boolean Search',
+  job_description: '📄 Job Description',
+  recruiter_email: '📧 Recruiter Email',
 }
 
 export default function History() {
@@ -58,11 +79,11 @@ export default function History() {
       )}
 
       {entries.map((entry, idx) => (
-        <div className="card" key={idx} style={{ cursor: 'pointer' }} onClick={() => setExpanded(expanded === idx ? null : idx)}>
+        <div className="card" key={entry._id || idx} style={{ cursor: 'pointer' }} onClick={() => setExpanded(expanded === idx ? null : idx)}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <span className="chip" style={{ marginRight: 8 }}>
-                {entry.mode === 'recruiter' ? '👔 Recruiter' : '🎯 Job Seeker'}
+                {MODE_LABELS[entry.mode] || `🧠 ${entry.mode}`}
               </span>
               <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
                 {new Date(entry.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -116,6 +137,12 @@ export default function History() {
               {entry.result?.generalFeedback && (
                 <div style={{ marginTop: 12, padding: 12, background: 'var(--bg)', borderRadius: 'var(--radius)', fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>
                   {entry.result.generalFeedback}
+                </div>
+              )}
+
+              {!entry.result?.combinedMatchPercentage && !entry.result?.generalFeedback && (
+                <div style={{ marginTop: 12, padding: 12, background: 'var(--bg)', borderRadius: 'var(--radius)', fontSize: '0.85rem' }}>
+                  <pre style={{ margin: 0 }}>{JSON.stringify(entry.result || {}, null, 2)}</pre>
                 </div>
               )}
             </div>

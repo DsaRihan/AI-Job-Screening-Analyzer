@@ -1,0 +1,12 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.env
+firebase-*.json
+node_modules/
+*.log
+data/
+uploads/

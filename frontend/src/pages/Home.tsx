@@ -1,7 +1,10 @@
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 export default function Home() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isRecruiter = user?.role === 'recruiter' || user?.role === 'admin'
 
   return (
     <div className="home-container">
@@ -16,9 +19,11 @@ export default function Home() {
           <button className="btn" style={{ fontSize: '1.1rem', padding: '12px 24px' }} onClick={() => navigate('/job-seeker')}>
             For Job Seekers
           </button>
-          <button className="btn secondary" style={{ fontSize: '1.1rem', padding: '12px 24px' }} onClick={() => navigate('/recruiter')}>
-            For Recruiters
-          </button>
+          {isRecruiter && (
+            <button className="btn secondary" style={{ fontSize: '1.1rem', padding: '12px 24px' }} onClick={() => navigate('/recruiter')}>
+              For Recruiters
+            </button>
+          )}
         </div>
       </section>
 

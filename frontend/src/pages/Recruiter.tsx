@@ -14,6 +14,7 @@ import {
   type RecruiterTemplateSummary,
 } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import LoaderOverlay from '../components/LoaderOverlay'
 
 type GeneratedJDObject = {
   title?: string
@@ -61,6 +62,7 @@ export default function Recruiter() {
   const [jd, setJd] = useState<File | null>(null)
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
+  const [busyMessage, setBusyMessage] = useState('')
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
@@ -185,6 +187,7 @@ export default function Recruiter() {
     setError(null); setResult(null)
     if (!token) { setError('Please log in to use Recruiter Tools'); return }
     if (!resume || !jd || !email) { setError('Provide resume, JD PDF and recruiter email'); return }
+    setBusyMessage('Uploading candidate files and analyzing fit…')
     setLoading(true)
     try {
       const data = await analyzeRecruiter(token, { resume, jobDescription: jd, recruiterEmail: email })
@@ -193,6 +196,7 @@ export default function Recruiter() {
       handleApiError(err, 'Analyze failed')
     } finally {
       setLoading(false)
+      setBusyMessage('')
     }
   }
 
@@ -211,6 +215,7 @@ export default function Recruiter() {
 
   const handleGenerateEmail = async () => {
     if (!token) { setError('Please log in to generate emails'); return }
+    setBusyMessage('Generating recruiter email…')
     setLoading(true)
     try {
       const data = await generateEmail(token, { type: emailType, candidateName, jobTitle })
@@ -220,11 +225,13 @@ export default function Recruiter() {
       handleApiError(err, 'Email generation failed')
     } finally {
       setLoading(false)
+      setBusyMessage('')
     }
   }
 
   const handleGenerateJD = async () => {
     if (!token) { setError('Please log in to generate job descriptions'); return }
+    setBusyMessage('Generating job description…')
     setLoading(true)
     try {
       const data = await generateJobDescription(token, { title: jdTitle, skills: jdSkills, experience: jdExperience })
@@ -234,12 +241,14 @@ export default function Recruiter() {
       handleApiError(err, 'JD generation failed')
     } finally {
       setLoading(false)
+      setBusyMessage('')
     }
   }
 
   const handleGenerateSearch = async () => {
     if (!token) { setError('Please log in to generate searches'); return }
     if (!searchJD.trim()) return
+    setBusyMessage('Generating boolean search string…')
     setLoading(true)
     try {
       const data = await generateBooleanSearch(token, { jobDescription: searchJD })
@@ -248,12 +257,14 @@ export default function Recruiter() {
       handleApiError(err, 'Search generation failed')
     } finally {
       setLoading(false)
+      setBusyMessage('')
     }
   }
 
   const handleSaveEmailTemplate = async () => {
     if (!token) { setError('Please log in to save templates'); return }
     if (!generatedEmail) return
+    setBusyMessage('Saving email template…')
     setLoading(true)
     setError(null)
     try {
@@ -273,12 +284,14 @@ export default function Recruiter() {
       handleApiError(err, 'Failed to save email template')
     } finally {
       setLoading(false)
+      setBusyMessage('')
     }
   }
 
   const handleSaveJdTemplate = async () => {
     if (!token) { setError('Please log in to save templates'); return }
     if (!generatedJdForSave) return
+    setBusyMessage('Saving job description template…')
     setLoading(true)
     setError(null)
     try {
@@ -298,11 +311,13 @@ export default function Recruiter() {
       handleApiError(err, 'Failed to save JD template')
     } finally {
       setLoading(false)
+      setBusyMessage('')
     }
   }
 
   const openTemplate = async (templateId: string) => {
     if (templatesApiUnavailable) return
+    setBusyMessage('Loading template versions…')
     setLoading(true)
     setError(null)
     try {
@@ -312,6 +327,7 @@ export default function Recruiter() {
       handleApiError(err, 'Failed to load template details')
     } finally {
       setLoading(false)
+      setBusyMessage('')
     }
   }
 
@@ -332,16 +348,20 @@ export default function Recruiter() {
 
   return (
     <section>
+      <LoaderOverlay
+        show={loading || downloadingPdf}
+        message={downloadingPdf ? 'Generating recruiter PDF report…' : (busyMessage || 'Uploading PDF and generating AI response…')}
+      />
       <h2>Recruiter Tools</h2>
       
       <div className='card'>
         <h3>Candidate Analysis</h3>
         <form onSubmit={onSubmit}>
-          <label>Resume (PDF)
-            <input type='file' accept='application/pdf' onChange={e => setResume(e.target.files?.[0] || null)} />
+          <label>Resume (PDF or DOCX)
+            <input type='file' accept='application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.docx' onChange={e => setResume(e.target.files?.[0] || null)} />
           </label>
-          <label>Job Description (PDF)
-            <input type='file' accept='application/pdf' onChange={e => setJd(e.target.files?.[0] || null)} />
+          <label>Job Description (PDF or DOCX)
+            <input type='file' accept='application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.docx' onChange={e => setJd(e.target.files?.[0] || null)} />
           </label>
           <label>Recruiter Email
             <input type='email' value={email} onChange={e => setEmail(e.target.value)} placeholder='name@company.com' />

@@ -58,14 +58,16 @@ except ImportError:
 
 # MongoDB integration
 try:
-    from backend.mongo_db import save_analysis, get_user_history, get_db
+    from backend.mongo_db import save_analysis, get_user_history, get_db, save_user_role, get_user_role_mongo
 except ImportError:
     try:
-        from mongo_db import save_analysis, get_user_history, get_db
+        from mongo_db import save_analysis, get_user_history, get_db, save_user_role, get_user_role_mongo
     except ImportError:
         save_analysis = lambda *a, **kw: None
         get_user_history = lambda *a, **kw: []
         get_db = lambda: (None, False)
+        save_user_role = lambda *a, **kw: None
+        get_user_role_mongo = lambda *a, **kw: None
 
 # Import config with fallback specifically for different deployment contexts
 try:
@@ -92,6 +94,29 @@ config = Config()
 init_directories(config)
 
 app = Flask(__name__)
+
+# Backward-compatible exports: resume helpers are implemented in backend/resume.py
+try:
+    from backend.resume import (
+        ResumeExtractionError,
+        MAX_RESUME_UPLOAD_BYTES,
+        SUPPORTED_RESUME_EXTENSIONS,
+        SUPPORTED_RESUME_MIME_TYPES,
+        _get_upload_size,
+        _extract_text_from_docx,
+        extract_text_from_pdf,
+        trim_resume_for_prompt,
+        parse_resume_sections,
+    )
+except Exception:
+    # If resume module is missing in lightweight test environments, provide placeholders
+    ResumeExtractionError = Exception
+    MAX_RESUME_UPLOAD_BYTES = 10 * 1024 * 1024
+    SUPPORTED_RESUME_EXTENSIONS = {".pdf", ".docx"}
+    SUPPORTED_RESUME_MIME_TYPES = {
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
 
 # Celery Configuration
 app.config['CELERY_BROKER_URL'] = config.CELERY_BROKER_URL
@@ -156,6 +181,21 @@ CORS(
     supports_credentials=True,
 )
 
+# Register resume routes (moved into a separate module to reduce app.py size)
+try:
+    from backend.routes.resume import resume_bp
+    app.register_blueprint(resume_bp)
+except Exception:
+    # Fail open for lightweight test environments where optional imports may be missing
+    logger.debug("resume blueprint not registered (import failed)")
+
+# Register auth routes used by the frontend register page
+try:
+    from backend.auth import auth_bp
+    app.register_blueprint(auth_bp)
+except Exception:
+    logger.debug("auth blueprint not registered (import failed)")
+
 APP_VERSION = config.APP_VERSION  # increment when major feature blocks added
 DEV_BYPASS_AUTH = config.DEV_BYPASS_AUTH
 START_TIME = time.time()
@@ -164,16 +204,36 @@ BUILD_COMMIT = os.getenv("RENDER_GIT_COMMIT", "local")
 
 # Initialize Firebase Admin SDK
 firebase_cred_path = config.FIREBASE_CREDENTIAL_PATH
-try:
-    # Check if file exists, else warn
-    if not os.path.exists(firebase_cred_path) and not isinstance(credentials, str):
-         # If credentials isn't a string (mock), checks file
-         logger.warning(f"Firebase credentials not found at {firebase_cred_path}")
+# Make path absolute if it's relative
+if not os.path.isabs(firebase_cred_path):
+    backend_dir = os.path.dirname(os.path.abspath(__file__))
+    firebase_cred_path = os.path.join(backend_dir, firebase_cred_path)
 
-    cred = credentials.Certificate(firebase_cred_path)
-    firebase_admin.initialize_app(cred)
-    FIREBASE_AVAILABLE = True
+print(f"[STARTUP] Firebase credentials path: {firebase_cred_path}")
+print(f"[STARTUP] Path exists: {os.path.exists(firebase_cred_path)}")
+
+try:
+    # Check if Firebase app is already initialized
+    try:
+        firebase_admin.get_app()
+        FIREBASE_AVAILABLE = True
+        print(f"[STARTUP] Firebase already initialized")
+        logger.info(f"Firebase already initialized")
+    except ValueError:
+        # App not initialized yet, so initialize it
+        if not os.path.exists(firebase_cred_path):
+             print(f"[STARTUP] ERROR: Firebase credentials file not found at {firebase_cred_path}")
+             logger.warning(f"Firebase credentials not found at {firebase_cred_path}")
+
+        cred = credentials.Certificate(firebase_cred_path)
+        firebase_admin.initialize_app(cred)
+        FIREBASE_AVAILABLE = True
+        print(f"[STARTUP] Firebase initialized successfully")
+        logger.info(f"Firebase initialized successfully from {firebase_cred_path}")
 except Exception as e:
+    import traceback
+    print(f"[STARTUP] ERROR during Firebase init: {type(e).__name__}: {e}")
+    print(f"[STARTUP] Traceback:\n{traceback.format_exc()}")
     logger.error(f"Failed to initialize Firebase: {e}. Auth will fail open to guest-user.")
     FIREBASE_AVAILABLE = False
 
@@ -199,8 +259,8 @@ COHERE_API_KEY = config.COHERE_API_KEY
 OPENAI_API_KEY = config.OPENAI_API_KEY
 LLM_MODEL = config.LLM_MODEL  # e.g. cohere:command-light-nightly or openai:gpt-5-codex-preview
 LLM_TIMEOUT_SECONDS = max(5, int(getattr(config, "LLM_TIMEOUT_SECONDS", 35) or 35))
-# Force sync execution on constrained deployments to prevent stuck queued jobs.
-ASYNC_TASKS_ENABLED = False
+# Allow async execution when configured (e.g. Docker Compose/Celery worker).
+ASYNC_TASKS_ENABLED = config.ASYNC_TASKS_ENABLED
 
 cohere_client = cohere.Client(COHERE_API_KEY) if COHERE_API_KEY else None
 openai_client = OpenAI(api_key=OPENAI_API_KEY) if (OPENAI_API_KEY and OpenAI) else None
@@ -460,12 +520,30 @@ def _save_recruiter_template(user_id, kind, title, content, metadata=None, templ
 # RBAC & Audit Logging
 # =============================
 def get_user_role(user_id):
+    # Try MongoDB first
+    role = get_user_role_mongo(user_id)
+    if role is not None:
+        return role
+    # Fallback to file
     try:
         with open(ROLES_FILE, 'r', encoding='utf-8') as f:
             roles = json.load(f)
         return roles.get(user_id, 'user')
     except Exception:
         return 'user'
+
+def get_assigned_user_role(user_id):
+    # Try MongoDB first
+    role = get_user_role_mongo(user_id)
+    if role is not None:
+        return role
+    # Fallback to file
+    try:
+        with open(ROLES_FILE, 'r', encoding='utf-8') as f:
+            roles = json.load(f)
+        return roles.get(user_id)
+    except Exception:
+        return None
 
 def write_audit(user_id, action, meta=None):
     entry = {
@@ -761,6 +839,13 @@ def extract_text_from_pdf(file_storage):
     except Exception as e:
         logger.error(f"pdf.extract_error error={e}")
         return None
+
+# Prefer centralized resume extraction implementation when available
+try:
+    from backend.resume import extract_text_from_pdf as _resume_extract_text_from_pdf
+    extract_text_from_pdf = _resume_extract_text_from_pdf
+except Exception:
+    pass
 
 def trim_resume_for_prompt(resume_text, max_length=800):
     """
@@ -1091,8 +1176,12 @@ def compute_semantic_match(resume_text, job_text):
         vect = TfidfVectorizer(max_features=4000, ngram_range=(1,2))
         docs = [resume_text, job_text]
         X = vect.fit_transform(docs)
-        sim = cosine_similarity(X[0:1], X[1:2])[0][0]
-        return round(float(sim) * 100, 2)
+        sim = cosine_similarity(X[0:1], X[1:2])
+        if isinstance(sim, float):
+            score = sim
+        else:
+            score = sim[0][0]
+        return round(float(score) * 100, 2)
     except Exception as e:
         logger.error(f"semantic.match_error error={e}")
         return None
@@ -1250,7 +1339,7 @@ def auth_required(fn):
         if request.method == "OPTIONS":
             return app.make_default_options_response()
 
-        if config.DEV_BYPASS_AUTH:
+        if os.getenv("DEV_BYPASS_AUTH", "0").lower() in ("1", "true", "yes"):
             # Inject mock user only in dev mode
             return fn({"uid": "dev-user", "email": "dev@local"}, *args, **kwargs)
             
@@ -1266,6 +1355,17 @@ def auth_required(fn):
         return fn(user_info, *args, **kwargs)
     wrapper.__name__ = fn.__name__
     return wrapper
+
+# Register coaching routes (extracted to backend/routes/coaching.py)
+try:
+    from backend.routes import coaching as _coaching_mod
+    app.add_url_rule('/coaching/save-version', 'coaching.bp.save_version', rate_limit(25, 300)(auth_required(_coaching_mod.coaching_save_version)), methods=['POST'])
+    app.add_url_rule('/coaching/progress', 'coaching.bp.progress', auth_required(_coaching_mod.coaching_progress), methods=['GET'])
+    app.add_url_rule('/coaching/study-pack', 'coaching.bp.study_pack', auth_required(_coaching_mod.coaching_study_pack), methods=['GET'])
+    app.add_url_rule('/coaching/interview-questions', 'coaching.bp.interview_questions', auth_required(_coaching_mod.coaching_interview_questions), methods=['GET'])
+    app.add_url_rule('/coaching/diff', 'coaching.bp.diff', auth_required(_coaching_mod.coaching_diff), methods=['GET'])
+except Exception:
+    logger.debug("coaching routes not registered (import failed)")
 
 @app.route("/", methods=["GET"])
 def index():
@@ -1369,6 +1469,44 @@ def auth_post_login(user_info):
     if sent:
         mark_welcome_email_sent(uid, email)
     return jsonify({'ok': True, 'welcomeEmailSent': bool(sent)})
+
+@app.route('/auth/me', methods=['GET', 'OPTIONS'])
+@auth_required
+def auth_me(user_info):
+    uid = (user_info.get('uid') or 'unknown').strip()
+    assigned_role = get_assigned_user_role(uid)
+    logger.info(f"auth.me uid={uid} assignedRole={assigned_role}")
+    return jsonify({
+        'uid': uid,
+        'email': user_info.get('email'),
+        'role': assigned_role,
+    })
+
+@app.route('/auth/select-role', methods=['POST', 'OPTIONS'])
+@auth_required
+def auth_select_role(user_info):
+    data = request.get_json(silent=True) or {}
+    chosen_role = (data.get('role') or '').strip().lower()
+    if chosen_role not in ['candidate', 'recruiter']:
+        return jsonify({'ok': False, 'message': 'Role must be candidate or recruiter.'}), 400
+
+    uid = (user_info.get('uid') or 'unknown').strip()
+    try:
+        with open(ROLES_FILE, 'r', encoding='utf-8') as f:
+            roles = json.load(f)
+    except Exception:
+        roles = {}
+
+    roles[uid] = chosen_role
+    with open(ROLES_FILE, 'w', encoding='utf-8') as f:
+        json.dump(roles, f, ensure_ascii=False, indent=2)
+
+    # Also save to MongoDB
+    save_user_role(uid, chosen_role)
+
+    logger.info(f"auth.select_role uid={uid} role={chosen_role} saved=true")
+    write_audit(uid, 'auth.select_role', {'role': chosen_role})
+    return jsonify({'ok': True, 'role': chosen_role})
 
 @app.route('/metrics', methods=['GET'])
 def metrics():
@@ -2278,12 +2416,27 @@ def admin_set_role(user_info):
     roles[target_uid] = new_role
     with open(ROLES_FILE, 'w', encoding='utf-8') as f:
         json.dump(roles, f, ensure_ascii=False, indent=2)
+    # Also save to MongoDB
+    save_user_role(target_uid, new_role)
     write_audit(user_info.get('uid'), 'admin.set_role', {'target': target_uid, 'role': new_role})
     return jsonify({'updated': True, 'userId': target_uid, 'role': new_role})
 
 # =============================
 # Advanced Features Endpoints
 # =============================
+
+def _save_feature_history(user_info, mode, result, resume_text="", job_desc_text=""):
+    """Best-effort history persistence for non-/analyze endpoints."""
+    try:
+        save_analysis(
+            user_id=user_info.get("uid", "anonymous"),
+            mode=mode,
+            result=result,
+            resume_excerpt=(resume_text or "")[:500],
+            job_desc_excerpt=(job_desc_text or "")[:500],
+        )
+    except Exception as e:
+        logger.warning(f"Failed to save {mode} history: {e}")
 
 @app.route('/generate-cover-letter', methods=['POST'])
 @cross_origin()
@@ -2315,8 +2468,17 @@ def generate_cover_letter(user_info):
     cover_letter = call_llm(prompt, temperature=0.7)
     if not cover_letter:
         return jsonify({'error': 'Failed to generate cover letter'}), 500
+
+    result = {'coverLetter': cover_letter}
+    _save_feature_history(
+        user_info,
+        mode="cover_letter",
+        result=result,
+        resume_text=resume_text,
+        job_desc_text=job_description,
+    )
         
-    return jsonify({'coverLetter': cover_letter})
+    return jsonify(result)
 
 @app.route('/generate-interview-questions', methods=['POST'])
 @cross_origin()
@@ -2350,8 +2512,17 @@ def generate_interview_questions(user_info):
     questions = call_llm(prompt, temperature=0.7)
     if not questions:
         return jsonify({'error': 'Failed to generate questions'}), 500
+
+    result = {'questions': questions}
+    _save_feature_history(
+        user_info,
+        mode="interview_questions",
+        result=result,
+        resume_text=resume_text,
+        job_desc_text=job_description,
+    )
         
-    return jsonify({'questions': questions})
+    return jsonify(result)
 
 @app.route('/analyze-skills', methods=['POST'])
 @cross_origin()
@@ -2401,6 +2572,14 @@ def analyze_skills(user_info):
         result = json.loads(analysis)
     except:
         result = {"raw_analysis": analysis}
+
+    _save_feature_history(
+        user_info,
+        mode="skill_gap",
+        result=result,
+        resume_text=resume_text,
+        job_desc_text=job_description,
+    )
         
     return jsonify(result)
 
@@ -2424,7 +2603,15 @@ def generate_email(user_info):
     """
     
     email_content = call_llm(prompt, temperature=0.7)
-    return jsonify({'email': email_content})
+    result = {'email': email_content}
+    _save_feature_history(
+        user_info,
+        mode="recruiter_email",
+        result=result,
+        resume_text="",
+        job_desc_text=job_title,
+    )
+    return jsonify(result)
 
 @app.route('/mock-interview', methods=['POST'])
 @cross_origin()
@@ -2450,7 +2637,15 @@ def mock_interview(user_info):
     prompt = "\\n".join(messages)
     
     response = call_llm(prompt, temperature=0.7)
-    return jsonify({'response': response})
+    result = {'response': response, 'jobContext': job_context}
+    _save_feature_history(
+        user_info,
+        mode="mock_interview",
+        result=result,
+        resume_text="",
+        job_desc_text=job_context,
+    )
+    return jsonify(result)
 
 
 @app.route('/generate-linkedin-profile', methods=['POST'])
@@ -2497,6 +2692,13 @@ def generate_linkedin_profile(user_info):
                 parsed = {}
 
         result = normalize_linkedin_profile(parsed, fallback_text=response)
+
+        _save_feature_history(
+            user_info,
+            mode="linkedin_profile",
+            result=result,
+            resume_text=resume_text,
+        )
             
         return jsonify(result)
     except Exception as e:
@@ -2548,6 +2750,14 @@ def analyze_mock_interview(user_info):
         result = json.loads(response)
     except:
         result = {"raw_response": response}
+
+    _save_feature_history(
+        user_info,
+        mode="mock_interview_analysis",
+        result=result,
+        resume_text="",
+        job_desc_text=job_context,
+    )
         
     return jsonify(result)
 
@@ -2699,6 +2909,14 @@ def generate_job_description(user_info):
         result = json.loads(response)
     except:
         result = {"raw_response": response}
+
+    _save_feature_history(
+        user_info,
+        mode="job_description",
+        result=result,
+        resume_text="",
+        job_desc_text=f"{title} | {skills} | {experience}",
+    )
         
     return jsonify(result)
 
@@ -2835,6 +3053,13 @@ def resume_health_check(user_info):
         result = json.loads(response)
     except:
         result = {"raw_response": response}
+
+    _save_feature_history(
+        user_info,
+        mode="resume_health",
+        result=result,
+        resume_text=text,
+    )
         
     return jsonify(result)
 
@@ -2873,6 +3098,14 @@ def generate_boolean_search(user_info):
         result = json.loads(response)
     except:
         result = {"raw_response": response}
+
+    _save_feature_history(
+        user_info,
+        mode="boolean_search",
+        result=result,
+        resume_text="",
+        job_desc_text=job_description,
+    )
         
     return jsonify(result)
 
@@ -2922,6 +3155,14 @@ def generate_networking_message(user_info):
             result = json.loads(response)
         except:
             result = {"raw_response": response}
+
+        _save_feature_history(
+            user_info,
+            mode="networking_message",
+            result=result,
+            resume_text="",
+            job_desc_text=f"{target_role} @ {company}",
+        )
             
         return jsonify(result)
     except Exception as e:

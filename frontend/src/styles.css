@@ -210,6 +210,36 @@ input:focus, textarea:focus, select:focus {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.loader-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 120;
+}
+
+.loader-card {
+  min-width: 260px;
+  max-width: 92vw;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.loader-card p {
+  margin: 0;
+  color: var(--fg);
+  font-weight: 600;
+}
+
 .toast { 
   position: fixed; 
   right: 24px; 

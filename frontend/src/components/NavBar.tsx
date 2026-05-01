@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 export default function NavBar() {
   const loc = useLocation()
   const { user, signIn, signOut } = useAuth()
+  const isRecruiter = user?.role === 'recruiter' || user?.role === 'admin'
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
 
   useEffect(() => {
@@ -21,7 +22,7 @@ export default function NavBar() {
       <div className="brand"><Link to="/">AI Job Screening</Link></div>
       <nav>
         <Link className={loc.pathname === '/job-seeker' ? 'active' : ''} to="/job-seeker">Job Seeker</Link>
-        <Link className={loc.pathname === '/recruiter' ? 'active' : ''} to="/recruiter">Recruiter</Link>
+        {isRecruiter && <Link className={loc.pathname === '/recruiter' ? 'active' : ''} to="/recruiter">Recruiter</Link>}
         <Link className={loc.pathname === '/coaching' ? 'active' : ''} to="/coaching">Coaching</Link>
         <Link className={loc.pathname === '/history' ? 'active' : ''} to="/history">History</Link>
       </nav>
@@ -33,7 +34,10 @@ export default function NavBar() {
         {user ? (
           <button onClick={signOut} className="btn">Sign out</button>
         ) : (
-          <button onClick={signIn} className="btn">Sign in</button>
+          <>
+            <button onClick={signIn} className="btn">Sign in</button>
+            <Link to="/register" className="btn" style={{ marginLeft: 8 }}>Register</Link>
+          </>
         )}
       </div>
     </header>

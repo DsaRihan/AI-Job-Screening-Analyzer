@@ -1,30 +1,54 @@
-# ORCHESTRATION: Docker Compose setup for backend (Flask), MongoDB, and Redis services in development
-version: '3.9'
+# ORCHESTRATION: Docker Compose setup for backend (Flask), frontend, Redis, Celery worker, and local MongoDB
 services:
   backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
-    env_file:
-      - .env
     environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      PORT: 8000
+      DEV_BYPASS_AUTH: "1"
+      ASYNC_TASKS_ENABLED: "1"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MONGO_URI: mongodb://mongo:27017/resumeAnalyzer
     ports:
       - "5000:8000"
     volumes:
-      - ./data:/app/data
+      - ./backend/data:/app/data
+      - ./backend/uploads:/app/backend/uploads
+    depends_on:
+      - redis
+      - mongo
     restart: unless-stopped
-  frontend:
-    working_dir: /app/frontend
-    image: node:20-alpine
-    command: sh -c "npm ci && npx vite --host 0.0.0.0 --port 5173"
-    volumes:
-      - .:/app
-    ports:
-      - "5173:5173"
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A backend.app.celery worker --loglevel=info --concurrency=1
     environment:
-      - VITE_API_BASE_URL=
+      DEV_BYPASS_AUTH: "1"
+      ASYNC_TASKS_ENABLED: "1"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MONGO_URI: mongodb://mongo:27017/resumeAnalyzer
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/uploads:/app/backend/uploads
+    depends_on:
+      - redis
+      - mongo
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:5000
+        VITE_DEV_BYPASS: "1"
+    ports:
+      - "8080:80"
     depends_on:
       - backend
     restart: unless-stopped
@@ -35,19 +59,14 @@ services:
       - "6379:6379"
     restart: unless-stopped
 
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: celery -A backend.app.celery worker --loglevel=info
-    env_file:
-      - .env
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    depends_on:
-      - redis
-      - backend
+  mongo:
+    image: mongo:7
+    command: ["mongod", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
     volumes:
-      - ./data:/app/data
+      - mongo_data:/data/db
     restart: unless-stopped
+
+volumes:
+  mongo_data:

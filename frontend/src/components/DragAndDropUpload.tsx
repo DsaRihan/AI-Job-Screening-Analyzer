@@ -7,7 +7,27 @@ interface DragAndDropUploadProps {
   label?: string
 }
 
-export default function DragAndDropUpload({ onFileSelect, accept = "application/pdf", label = "Drag & Drop Resume PDF here or Click to Browse" }: DragAndDropUploadProps) {
+const DEFAULT_ACCEPT = "application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.docx"
+
+function matchesAccept(file: File, accept: string) {
+  const patterns = accept.split(',').map(pattern => pattern.trim()).filter(Boolean)
+  if (patterns.length === 0) return true
+
+  const fileName = file.name.toLowerCase()
+  return patterns.some(pattern => {
+    if (pattern.startsWith('.')) {
+      return fileName.endsWith(pattern.toLowerCase())
+    }
+    const normalized = pattern.replace('*', '.*')
+    try {
+      return new RegExp(`^${normalized}$`, 'i').test(file.type)
+    } catch {
+      return file.type === pattern
+    }
+  })
+}
+
+export default function DragAndDropUpload({ onFileSelect, accept = DEFAULT_ACCEPT, label = "Drag & Drop Resume PDF or DOCX here or Click to Browse" }: DragAndDropUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [fileName, setFileName] = useState<string | null>(null)
 
@@ -26,8 +46,8 @@ export default function DragAndDropUpload({ onFileSelect, accept = "application/
     setIsDragOver(false)
     const file = e.dataTransfer.files?.[0]
     if (file) {
-      if (accept && !file.type.match(accept.replace('*', '.*'))) {
-        alert(`Only ${accept} files are allowed`)
+      if (accept && !matchesAccept(file, accept)) {
+        alert('Only PDF or DOCX files are allowed')
         return
       }
       setFileName(file.name)
@@ -38,10 +58,15 @@ export default function DragAndDropUpload({ onFileSelect, accept = "application/
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-        setFileName(file.name)
-        onFileSelect(file)
+      if (accept && !matchesAccept(file, accept)) {
+        alert('Only PDF or DOCX files are allowed')
+        e.target.value = ''
+        return
+      }
+      setFileName(file.name)
+      onFileSelect(file)
     }
-  }, [onFileSelect])
+  }, [accept, onFileSelect])
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation()

@@ -29,6 +29,10 @@ backend/firebase_key.json
 backend/firebase-service-account.json
 node_modules
 
+# Ignore Python virtual environments(corrected path)
+firebase_key.json
+firebase-service-account.json
+node_modules
 # Ignore Python virtual environments
 venv/
 backend/venv/
@@ -39,3 +43,6 @@ backend/venv/
 
 # Optional: Ignore Firebase config if still present in the source code
 src/firebase.js
+
+# Ignore backend role mapping file
+data/roles.json

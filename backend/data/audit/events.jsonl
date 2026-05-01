@@ -1,0 +1,16 @@
+{"ts": "2026-04-28T15:55:33.240264Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 6.55, "notifyEmail": null}}
+{"ts": "2026-04-28T15:55:37.299871Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 6.55, "notifyEmail": null}}
+{"ts": "2026-04-29T11:55:57.444003Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 8.03, "notifyEmail": null}}
+{"ts": "2026-04-29T11:56:21.074840Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 8.03, "notifyEmail": null}}
+{"ts": "2026-04-29T11:58:08.244592Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 11.72, "notifyEmail": null}}
+{"ts": "2026-04-29T12:16:59.637016Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 1.71, "notifyEmail": null}}
+{"ts": "2026-04-29T12:19:25.380734Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 1.71, "notifyEmail": null}}
+{"ts": "2026-04-29T12:20:17.103857Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 1.71, "notifyEmail": null}}
+{"ts": "2026-04-29T12:35:40.089190Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 2.74, "notifyEmail": null}}
+{"ts": "2026-04-29T12:37:11.486091Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": null, "notifyEmail": null}}
+{"ts": "2026-04-29T12:54:41.797708Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 6.77, "notifyEmail": null}}
+{"ts": "2026-04-29T13:04:43.716407Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "Ud7jOm9wSuVPsNQ7p9LIbYupq183", "matchPercentage": 0.84, "notifyEmail": null}}
+{"ts": "2026-04-29T13:07:05.284874Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 0.84, "notifyEmail": null}}
+{"ts": "2026-04-29T13:07:50.728995Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 0.84, "notifyEmail": null}}
+{"ts": "2026-04-29T16:28:41.260592Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "AycRlJZ6fiVErtTkStD3byeIly42", "matchPercentage": 0.0, "notifyEmail": null}}
+{"ts": "2026-04-30T12:53:26.215708Z", "event": "analysis.completed", "payload": {"mode": "jobSeeker", "userId": "bECpOSKWafZJQ4yJOLMLbKgHndX2", "matchPercentage": 7.16, "notifyEmail": null}}

@@ -3,7 +3,8 @@ set -e
 
 # Open the HTTP port as early as possible to avoid Render wake-time routing 503s.
 # Emit access/error logs so request traffic is visible in Render live tail.
-gunicorn --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile - backend.app:app &
+PORT="${PORT:-8000}"
+gunicorn --bind 0.0.0.0:${PORT} --timeout 120 --access-logfile - --error-logfile - backend.app:app &
 GUNICORN_PID=$!
 
 cleanup() {

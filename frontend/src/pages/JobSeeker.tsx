@@ -4,12 +4,14 @@ import { analyzeJobSeeker, generateCoverLetter, generateInterviewQuestions, anal
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
 import DragAndDropUpload from '../components/DragAndDropUpload'
+import LoaderOverlay from '../components/LoaderOverlay'
 
 export default function JobSeeker() {
   const { token } = useAuth()
   const [resume, setResume] = useState<File | null>(null)
   const [jobDescription, setJobDescription] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState('')
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
@@ -21,6 +23,19 @@ export default function JobSeeker() {
   const [netRecipient, setNetRecipient] = useState('')
   const [netType, setNetType] = useState('linkedin_connect')
 
+  const actionLoadingMessages: Record<'analyze' | 'coverLetter' | 'questions' | 'skills' | 'linkedin' | 'salary' | 'tailor' | 'career' | 'health' | 'networking', string> = {
+    analyze: 'Uploading PDF and analyzing resume match…',
+    coverLetter: 'Uploading PDF and generating cover letter…',
+    questions: 'Uploading PDF and generating interview questions…',
+    skills: 'Uploading PDF and analyzing skill gaps…',
+    linkedin: 'Uploading PDF and generating LinkedIn profile…',
+    salary: 'Uploading PDF and estimating salary…',
+    tailor: 'Uploading PDF and tailoring your resume…',
+    career: 'Uploading PDF and generating career roadmap…',
+    health: 'Uploading PDF and running resume health check…',
+    networking: 'Generating networking message…',
+  }
+
   const handleAction = async (action: 'analyze' | 'coverLetter' | 'questions' | 'skills' | 'linkedin' | 'salary' | 'tailor' | 'career' | 'health' | 'networking') => {
     setError(null); setResult(null); setActiveTab(action)
     
@@ -31,7 +46,8 @@ export default function JobSeeker() {
       return
     }
 
-    if (!resume) { setError('Please select a resume PDF'); return }
+    if (!resume) { setError('Please select a resume PDF or DOCX'); return }
+    setLoadingMessage(actionLoadingMessages[action])
     setLoading(true)
     try {
       let data;
@@ -59,6 +75,7 @@ export default function JobSeeker() {
       setError(err?.message || 'Action failed')
     } finally {
       setLoading(false)
+      setLoadingMessage('')
     }
   }
 
@@ -94,6 +111,7 @@ export default function JobSeeker() {
   const handleNetworkingSubmit = async () => {
     if (!token) { setError('Please log in to generate networking messages'); return }
     if (!netRole || !netCompany) { setError('Please provide target role and company'); return }
+    setLoadingMessage(actionLoadingMessages.networking)
     setLoading(true)
     try {
       const data = await generateNetworkingMessage(token, { targetRole: netRole, company: netCompany, recipientName: netRecipient, messageType: netType })
@@ -102,14 +120,21 @@ export default function JobSeeker() {
       setError(err?.message || 'Networking message generation failed')
     } finally {
       setLoading(false)
+      setLoadingMessage('')
     }
   }
 
   return (
     <section>
+      <LoaderOverlay
+        show={loading || downloadingPdf}
+        message={downloadingPdf
+          ? (activeTab === 'coverLetter' ? 'Generating cover letter PDF…' : 'Generating PDF report…')
+          : (loadingMessage || 'Uploading PDF and generating AI response…')}
+      />
       <h2>Job Seeker Tools</h2>
       <div className="card">
-        <label style={{ marginBottom: '1rem' }}>Resume (PDF)</label>
+        <label style={{ marginBottom: '1rem' }}>Resume (PDF or DOCX)</label>
         <DragAndDropUpload onFileSelect={setResume} />
 
         <label style={{ marginTop: '1.5rem' }}>Job Description (optional)
@@ -156,7 +181,6 @@ export default function JobSeeker() {
         </div>
       )}
 
-      {loading && <div className="loading">Processing...</div>}
       {error && <div className="error">{error}</div>}
       
       {result && activeTab !== 'networking' && (

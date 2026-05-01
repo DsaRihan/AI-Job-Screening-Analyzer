@@ -1,8 +1,22 @@
 # CONFIGURATION: Environment setup, logging configuration, and directory initialization for backend
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+
+def _load_environment_files() -> None:
+    """Load the backend .env file.
+
+    The backend is now configured to read its own environment file only,
+    which keeps runtime settings local to the backend service.
+    """
+    backend_dir = Path(__file__).resolve().parent
+    env_path = backend_dir / ".env"
+    if env_path.exists():
+        load_dotenv(env_path, override=True)
+
+
+_load_environment_files()
 
 
 class Config:
@@ -13,7 +27,9 @@ class Config:
     """
 
     APP_VERSION: str = os.getenv("APP_VERSION", "1.0.0")
-    DEV_BYPASS_AUTH: bool = os.getenv("DEV_BYPASS_AUTH", "0").lower() in ("1", "true", "yes")
+    @property
+    def DEV_BYPASS_AUTH(self) -> bool:
+        return os.getenv("DEV_BYPASS_AUTH", "0").lower() in ("1", "true", "yes")
     ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "*")
 
     FIREBASE_CREDENTIAL_PATH: str = os.getenv(

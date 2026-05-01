@@ -1,5 +1,5 @@
 import { useAuth } from '../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 
 const featureCards = [
@@ -38,7 +38,7 @@ export default function Landing() {
     try {
       await signIn()
     } catch (err: any) {
-      setError(err?.message || 'Google sign-in failed')
+      setError(err?.code ? `${err.code}: ${err.message || 'Google sign-in failed'}` : (err?.message || 'Google sign-in failed'))
     } finally {
       setLoading(false)
     }
@@ -50,7 +50,7 @@ export default function Landing() {
     try {
       await signInWithEmail(email, password)
     } catch (err: any) {
-      setError(err?.message || 'Email sign-in failed')
+      setError(err?.code ? `${err.code}: ${err.message || 'Email sign-in failed'}` : (err?.message || 'Email sign-in failed'))
     } finally {
       setLoading(false)
     }
@@ -81,6 +81,9 @@ export default function Landing() {
 
           {mode === 'email' && (
             <div className="landing-auth-form">
+              <p style={{ margin: '0 0 0.5rem', color: 'var(--muted)', fontSize: '0.95rem' }}>
+                Email login only works if Email/Password is enabled in Firebase and the password matches the user you created.
+              </p>
               <label>Email
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="recruiter@company.com" />
               </label>
@@ -95,6 +98,10 @@ export default function Landing() {
 
           {authMessage && <p className="landing-auth-message">{authMessage}</p>}
           {error && <p className="landing-auth-error">{error}</p>}
+
+          <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.95rem', color: 'var(--muted)' }}>
+            Don't have an account? <Link to="/register" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: '500' }}>Register here</Link>
+          </div>
         </div>
       </section>
 
