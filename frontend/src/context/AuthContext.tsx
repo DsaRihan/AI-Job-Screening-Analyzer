@@ -51,22 +51,11 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 }
 
-const CANONICAL_APP_URL = (import.meta.env.VITE_CANONICAL_APP_URL || 'https://ai-job-screening-analyzer.vercel.app').replace(/\/$/, '')
-
-function getCanonicalRedirectUrl() {
-  try {
-    const target = new URL(CANONICAL_APP_URL)
-    const current = window.location
-    const isLocalHost = current.hostname === 'localhost' || current.hostname === '127.0.0.1' || current.hostname.endsWith('.local')
-    if (isLocalHost) {
-      return null
-    }
-    if (current.hostname !== target.hostname) {
-      return `${target.origin}${current.pathname}${current.search}${current.hash}`
-    }
-  } catch {
-    // Invalid canonical URL should not block auth flow.
-  }
+function getFirebaseConfigError() {
+  if (!firebaseConfig.apiKey) return 'Firebase API key is missing. Set VITE_FIREBASE_API_KEY in frontend/.env.local.'
+  if (!firebaseConfig.authDomain) return 'Firebase auth domain is missing. Set VITE_FIREBASE_AUTH_DOMAIN in frontend/.env.local.'
+  if (!firebaseConfig.projectId) return 'Firebase project ID is missing. Set VITE_FIREBASE_PROJECT_ID in frontend/.env.local.'
+  if (!firebaseConfig.appId) return 'Firebase app ID is missing. Set VITE_FIREBASE_APP_ID in frontend/.env.local.'
   return null
 }
 
@@ -190,17 +179,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('Dev bypass: auto signed in')
         return
       }
+      const firebaseError = getFirebaseConfigError()
+      if (firebaseError) {
+        setAuthMessage(firebaseError)
+        alert(firebaseError)
+        return
+      }
       ensureFirebase()
       if (!auth) {
         console.warn('Firebase not configured. Set VITE_FIREBASE_API_KEY or enable VITE_DEV_BYPASS=1')
         alert('Sign in not configured. Please enable dev bypass or add Firebase credentials.')
-        return
-      }
-
-      const redirectUrl = getCanonicalRedirectUrl()
-      if (redirectUrl) {
-        setAuthMessage('Redirecting to secure login domain...')
-        window.location.assign(redirectUrl)
         return
       }
 
@@ -210,17 +198,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const result = await signInWithPopup(auth, new GoogleAuthProvider())
         console.log('Sign-in successful:', result.user.email)
       } catch (error: any) {
+        if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') {
+          console.info('Google sign-in was canceled by the user.')
+          setAuthMessage(null)
+          return
+        }
         console.error('Sign in failed - Full error:', error)
         console.error('Error code:', error.code)
         console.error('Error message:', error.message)
         console.error('Firebase config:', { apiKey: firebaseConfig.apiKey ? '***set***' : 'missing', authDomain: firebaseConfig.authDomain, projectId: firebaseConfig.projectId })
         if (error?.code === 'auth/unauthorized-domain') {
-          setAuthMessage(`This URL is not allowed by Firebase. Open ${CANONICAL_APP_URL} to sign in.`)
+          setAuthMessage('This domain is not allowed by Firebase. Add your current localhost or deployed domain in Firebase Authorized Domains.')
         }
         alert(`Sign in failed: ${error.message || error.code || 'Unknown error'}. Check console for details.`)
       }
     },
     signInWithEmail: async (email: string, password: string) => {
+      const firebaseError = getFirebaseConfigError()
+      if (firebaseError) {
+        setAuthMessage(firebaseError)
+        alert(firebaseError)
+        return
+      }
       ensureFirebase()
       if (!auth) {
         alert('Email login is not configured. Please add Firebase credentials.')

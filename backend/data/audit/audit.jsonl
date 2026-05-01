@@ -197,3 +197,4 @@
 {"ts": "2026-05-01T12:33:00.715693Z", "user": "Ud7jOm9wSuVPsNQ7p9LIbYupq183", "action": "history.view", "meta": {"count": 1}}
 {"ts": "2026-05-01T12:52:21.929896Z", "user": "vP6ebcfVDdS2YcD67d4ow5ybzfh2", "action": "history.view", "meta": {"count": 0}}
 {"ts": "2026-05-01T12:53:38.149665Z", "user": "VEcbpp4OGLUtgg5XtSZY0i8Aj3x1", "action": "auth.select_role", "meta": {"role": "candidate"}}
+{"ts": "2026-05-01T21:03:22.715925Z", "user": "6x9z1COxMJTTVpDDTSiUxEmWMmg2", "action": "auth.select_role", "meta": {"role": "candidate"}}

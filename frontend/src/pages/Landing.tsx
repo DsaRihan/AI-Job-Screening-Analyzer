@@ -82,12 +82,10 @@ export default function Landing() {
 
   const handleSignIn = async () => {
     setError(null)
-    setLoading(true)
     try {
       await signIn()
     } catch (err: any) {
       showAuthError(err, 'Google sign-in failed. Please try again.')
-      setLoading(false)
     }
   }
 
@@ -98,6 +96,7 @@ export default function Landing() {
       await signInWithEmail(email, password)
     } catch (err: any) {
       showAuthError(err, 'Email sign-in failed. Please check your credentials and try again.')
+    } finally {
       setLoading(false)
     }
   }
@@ -105,7 +104,7 @@ export default function Landing() {
   return (
     <div className="landing-shell">
       <div className="landing-atmosphere" aria-hidden="true" />
-      <LoaderOverlay show={loading} message={mode === 'google' ? 'Signing you in…' : 'Verifying credentials…'} />
+      <LoaderOverlay show={mode === 'email' && loading} message="Verifying credentials…" />
       <section className="landing-hero">
         <h1>AI Job Screening & Coaching Platform</h1>
         <p className="landing-tagline">Analyze Your Resume With AI</p>
@@ -122,8 +121,8 @@ export default function Landing() {
 
           {mode === 'google' && (
             <div className="landing-auth-action">
-              <button className="btn landing-cta" onClick={handleSignIn} disabled={loading}>
-                {loading ? 'Signing in...' : 'Sign in with Google'}
+              <button className="btn landing-cta" onClick={handleSignIn}>
+                Sign in with Google
               </button>
             </div>
           )}
